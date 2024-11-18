@@ -1,0 +1,46 @@
+{
+    "title": "SRI KRISHNADEVARAYA UNIV.COLL.OF ENG.- SELF FINANCE | Vidhyaacharya.com",
+    "meta_description": "Provide the details for AP EAPCET engineering college details and college predictor based on rank",
+    "keywords": "AP EAPCET, EAPCET,EAMCET, AP EAMCET, COLLEGE PREDICTOR, EAMCET RANK VS COLLEGE, AP ENGINEERING COLLEGES, EAPCET NEWS",
+    "basic_info": [],
+    "structured_data": [],
+    "faqs": [],
+    "Section": {},
+    "Vidhya Acharya": [
+        {
+            "#": "1",
+            "Course Code": "CIV",
+            "Course Name": "CIVIL ENGINEERING",
+            "Intake": "66",
+            "Fee": "70000"
+        },
+        {
+            "#": "2",
+            "Course Code": "CSE",
+            "Course Name": "COMPUTER SCIENCE AND ENGINEERING",
+            "Intake": "66",
+            "Fee": "70000"
+        },
+        {
+            "#": "3",
+            "Course Code": "ECE",
+            "Course Name": "ELECTRONICS AND COMMUNICATION ENGINEERING",
+            "Intake": "66",
+            "Fee": "70000"
+        },
+        {
+            "#": "4",
+            "Course Code": "EEE",
+            "Course Name": "ELECTRICAL AND ELECTRONICS ENGINEERING",
+            "Intake": "66",
+            "Fee": "70000"
+        },
+        {
+            "#": "5",
+            "Course Code": "MEC",
+            "Course Name": "MECHANICAL ENGINEERING",
+            "Intake": "66",
+            "Fee": "70000"
+        }
+    ]
+}
