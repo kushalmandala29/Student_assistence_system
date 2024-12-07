@@ -97,7 +97,7 @@ This system can give inaccurate or incomplete information. It is intended for ed
 - [Dr.B. Arune Kumar]() - Incharge and Instructor
 - [P.M.SALMAN KHAN](https://github.com/PrashantChoudhary)
 - [Venkata Kowsic]()
-- [M. Kushal]()
+- [M. Kushal](https://github.com/kushalmandala29)
 - [K Rutvik](https://github.com/PrashantChoudhary)
 - [P. Azam Khan](https://github.com/PrashantChoudhary)
 - [K. Bathul Sultana](https://github.com/PrashantChoudhary)
