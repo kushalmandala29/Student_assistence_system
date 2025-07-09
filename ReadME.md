@@ -95,9 +95,8 @@ This system can give inaccurate or incomplete information. It is intended for ed
 
 ## Contributers:
 - [Dr.B. Arune Kumar]() - Incharge and Instructor
-- [P.M.SALMAN KHAN](https://github.com/PrashantChoudhary)
-- [Venkata Kowsic]()
 - [M. Kushal](https://github.com/kushalmandala29)
-- [K Rutvik](https://github.com/PrashantChoudhary)
-- [P. Azam Khan](https://github.com/PrashantChoudhary)
-- [K. Bathul Sultana](https://github.com/PrashantChoudhary)
+- [P.M.SALMAN KHAN] ()
+- [Venkata Kowsic]()
+- [Teja Sai]()
+-
