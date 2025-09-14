@@ -5,7 +5,7 @@ Calls Gemini model with retrieved context and formats responses.
 
 import os
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 from google_gemini import ChatGoogleGemini
 from .prompt_template import PromptTemplates
 import re
@@ -23,41 +23,21 @@ class ResponseGenerator:
         )
         self.prompt_templates = PromptTemplates()
     
-    def detect_language(self, text: str) -> str:
-        """Detect language of input text. Returns 'en' for English or detected language code."""
-        # Simple language detection - can be enhanced with proper language detection library
-        english_indicators = ['the', 'and', 'is', 'in', 'to', 'of', 'for', 'with', 'about', 'university', 'college']
-        hindi_indicators = ['के', 'में', 'है', 'का', 'की', 'से', 'यूनिवर्सिटी', 'कॉलेज', 'विश्वविद्यालय']
-        
-        text_lower = text.lower()
-        
-        english_count = sum(1 for word in english_indicators if word in text_lower)
-        hindi_count = sum(1 for word in hindi_indicators if word in text_lower)
-        
-        if hindi_count > english_count:
-            return 'hi'
-        return 'en'
-    
     async def generate_response(
         self, 
         query: str, 
         context: str, 
-        sources: List[str],
-        language: Optional[str] = None
+        sources: List[str]
     ) -> Dict[str, str]:
         """
         Generate formatted response with context and sources.
         
         Returns:
-            Dict with 'answer', 'sources', and 'language' keys
+            Dict with 'answer' and 'sources' keys
         """
         try:
-            # Auto-detect language if not provided
-            if language is None:
-                language = self.detect_language(query)
-            
-            # Get appropriate prompt template
-            system_prompt = self.prompt_templates.get_system_prompt(language)
+            # Get system prompt
+            system_prompt = self.prompt_templates.get_system_prompt()
             
             # Format the prompt with context
             if context.strip():
@@ -67,13 +47,13 @@ CONTEXT: {context}
 
 STUDENT QUERY: {query}
 
-Please provide a comprehensive answer in {self._get_language_name(language)}."""
+Please provide a comprehensive answer."""
             else:
                 formatted_prompt = f"""{system_prompt}
 
 STUDENT QUERY: {query}
 
-No specific context was found. Please provide a helpful general response about this topic in {self._get_language_name(language)}, and suggest checking official university websites for detailed information."""
+No specific context was found. Please provide a helpful general response about this topic, and suggest checking official university websites for detailed information."""
             
             # Generate response
             response = await self.llm.ainvoke(formatted_prompt)
@@ -84,16 +64,14 @@ No specific context was found. Please provide a helpful general response about t
             
             return {
                 'answer': formatted_answer,
-                'sources': self._format_sources(sources),
-                'language': language
+                'sources': self._format_sources(sources)
             }
             
         except Exception as e:
             logger.error(f"Response generation failed: {e}")
             return {
-                'answer': self._get_fallback_response(language),
-                'sources': "Error occurred during processing",
-                'language': language or 'en'
+                'answer': self._get_fallback_response(),
+                'sources': "Error occurred during processing"
             }
     
     def _format_answer(self, answer: str, sources: List[str]) -> str:
@@ -163,28 +141,9 @@ No specific context was found. Please provide a helpful general response about t
         
         return "\n".join(source_info) if source_info else "Multiple sources"
     
-    def _get_language_name(self, language_code: str) -> str:
-        """Convert language code to readable name."""
-        language_names = {
-            'en': 'English',
-            'hi': 'Hindi',
-            'te': 'Telugu',
-            'ta': 'Tamil',
-            'kn': 'Kannada',
-            'ml': 'Malayalam',
-            'mr': 'Marathi',
-            'gu': 'Gujarati',
-            'bn': 'Bengali'
-        }
-        return language_names.get(language_code, 'English')
-    
-    def _get_fallback_response(self, language: str) -> str:
+    def _get_fallback_response(self) -> str:
         """Get fallback response when generation fails."""
-        fallback_responses = {
-            'en': "I couldn't find complete details about your query. Please check the official university website or contact their admissions office for accurate information.",
-            'hi': "मुझे आपके प्रश्न के बारे में पूरी जानकारी नहीं मिल सकी। कृपया आधिकारिक विश्वविद्यालय वेबसाइट देखें या सटीक जानकारी के लिए उनके प्रवेश कार्यालय से संपर्क करें।"
-        }
-        return fallback_responses.get(language, fallback_responses['en'])
+        return "I couldn't find complete details about your query. Please check the official university website or contact their admissions office for accurate information."
     
     def format_final_response(self, response_data: Dict[str, str]) -> str:
         """Format the final response for display."""

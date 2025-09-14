@@ -102,69 +102,147 @@ class DocumentRetriever:
     
     async def retrieve_context(self, query: str, threshold: float = 0.6) -> Tuple[str, List[str]]:
         """
-        Main retrieval method with fallback chain:
-        ChromaDB → WebSearchAPI → Search1API → NewsData.io → Gemini Pro
-        Returns (context, sources) tuple.
+        Main retrieval method that searches all APIs simultaneously and returns the most relevant results.
+        Returns (context, sources) tuple with ranked results from all sources.
         """
         sources = []
-        context_parts = []
+        all_results = []
         
-        # Step 1: Try ChromaDB
+        # Step 1: Search ChromaDB
         try:
             chroma_context, chroma_sources = await self._search_chromadb(query, threshold)
             if chroma_context:
-                context_parts.append(chroma_context)
-                sources.extend(chroma_sources)
+                all_results.append({
+                    'content': chroma_context,
+                    'sources': chroma_sources,
+                    'api': 'ChromaDB',
+                    'score': 1.0  # ChromaDB gets highest priority for exact matches
+                })
                 logger.info("Successfully retrieved context from ChromaDB")
         except Exception as e:
             logger.warning(f"ChromaDB search failed: {e}")
         
-        # Step 2: Try WebSearchAPI if ChromaDB insufficient
-        if len(context_parts) == 0 or len(" ".join(context_parts)) < 200:
+        # Step 2: Search all web APIs simultaneously
+        api_tasks = []
+        
+        # WebSearchAPI task
+        async def search_websearch():
             try:
-                websearch_snippets = await self.query_websearchapi(query)
-                if websearch_snippets:
-                    context_parts.extend(websearch_snippets)
-                    sources.extend([f"WebSearchAPI - Result {i+1}" for i in range(len(websearch_snippets))])
-                    logger.info("Successfully retrieved context from WebSearchAPI")
+                snippets = await self.query_websearchapi(query)
+                if snippets:
+                    return {
+                        'content': snippets,
+                        'api': 'WebSearchAPI',
+                        'score': 0.9
+                    }
             except Exception as e:
                 logger.warning(f"WebSearchAPI search failed: {e}")
+            return None
         
-        # Step 3: Try Search1API if still insufficient
-        if len(context_parts) == 0 or len(" ".join(context_parts)) < 150:
+        # Search1API task
+        async def search_search1():
             try:
-                search1_snippets = await self.query_search1api(query)
-                if search1_snippets:
-                    context_parts.extend(search1_snippets)
-                    sources.extend([f"Search1API - Result {i+1}" for i in range(len(search1_snippets))])
-                    logger.info("Successfully retrieved context from Search1API")
+                snippets = await self.query_search1api(query)
+                if snippets:
+                    return {
+                        'content': snippets,
+                        'api': 'Search1API',
+                        'score': 0.8
+                    }
             except Exception as e:
                 logger.warning(f"Search1API search failed: {e}")
+            return None
         
-        # Step 4: Try NewsData.io if still insufficient
-        if len(context_parts) == 0 or len(" ".join(context_parts)) < 100:
+        # NewsData.io task
+        async def search_newsdata():
             try:
-                news_snippets = await self.query_newsdata(query)
-                if news_snippets:
-                    context_parts.extend(news_snippets)
-                    sources.extend([f"NewsData.io - Article {i+1}" for i in range(len(news_snippets))])
-                    logger.info("Successfully retrieved context from NewsData.io")
+                snippets = await self.query_newsdata(query)
+                if snippets:
+                    return {
+                        'content': snippets,
+                        'api': 'NewsData.io',
+                        'score': 0.7
+                    }
             except Exception as e:
                 logger.warning(f"NewsData.io search failed: {e}")
+            return None
         
-        # Step 5: Gemini Pro fallback if all fail
-        if len(context_parts) == 0:
+        # Execute all API searches concurrently
+        api_tasks = [search_websearch(), search_search1(), search_newsdata()]
+        api_results = await asyncio.gather(*api_tasks, return_exceptions=True)
+        
+        # Process API results
+        for result in api_results:
+            if result and not isinstance(result, Exception):
+                # Calculate relevance score for each snippet
+                scored_snippets = []
+                for snippet in result['content']:
+                    relevance = await self._calculate_relevance(query, snippet)
+                    scored_snippets.append({
+                        'snippet': snippet,
+                        'relevance': relevance,
+                        'api': result['api']
+                    })
+                
+                if scored_snippets:
+                    all_results.append({
+                        'content': scored_snippets,
+                        'api': result['api'],
+                        'score': result['score']
+                    })
+                    logger.info(f"Successfully retrieved {len(scored_snippets)} results from {result['api']}")
+        
+        # Step 3: Rank and combine all results
+        final_snippets = []
+        final_sources = []
+        
+        # First add ChromaDB results (highest priority)
+        for result in all_results:
+            if result['api'] == 'ChromaDB':
+                final_snippets.append(result['content'])
+                final_sources.extend(result['sources'])
+        
+        # Then add top-ranked snippets from web APIs
+        web_snippets = []
+        seen_content = set()  # Track content to avoid duplicates
+        
+        for result in all_results:
+            if result['api'] != 'ChromaDB':
+                for item in result['content']:
+                    # Create a simplified version for duplicate detection
+                    simplified_content = ' '.join(item['snippet'].lower().split()[:10])
+                    
+                    # Skip if we've seen similar content
+                    if simplified_content not in seen_content:
+                        seen_content.add(simplified_content)
+                        web_snippets.append({
+                            'snippet': item['snippet'],
+                            'relevance': item['relevance'],
+                            'api': item['api'],
+                            'api_score': result['score']
+                        })
+        
+        # Sort by combined relevance score (relevance * api_score)
+        web_snippets.sort(key=lambda x: x['relevance'] * x['api_score'], reverse=True)
+        
+        # Take top 6 most relevant snippets from web APIs
+        for item in web_snippets[:6]:
+            final_snippets.append(item['snippet'])
+            final_sources.append(f"{item['api']} - Relevance: {item['relevance']:.2f}")
+        
+        # Step 4: Gemini Pro fallback if no results
+        if not final_snippets:
             try:
                 gemini_context = await self._gemini_fallback_knowledge(query)
                 if gemini_context:
-                    context_parts.append(gemini_context)
-                    sources.append("Gemini Pro")
+                    final_snippets.append(gemini_context)
+                    final_sources.append("Gemini Pro")
                     logger.info("Using Gemini Pro fallback knowledge")
             except Exception as e:
                 logger.error(f"Gemini Pro fallback failed: {e}")
         
-        final_context = "\n\n".join(context_parts) if context_parts else ""
-        return final_context, sources
+        final_context = "\n\n".join(final_snippets) if final_snippets else ""
+        return final_context, final_sources
     
     async def _search_chromadb(self, query: str, threshold: float) -> Tuple[str, List[str]]:
         """Search ChromaDB for relevant documents."""
@@ -349,6 +427,55 @@ class DocumentRetriever:
             logger.error(f"NewsData.io request failed: {e}")
             return []
     
+    async def _calculate_relevance(self, query: str, snippet: str) -> float:
+        """
+        Calculate relevance score between query and snippet using keyword matching and semantic similarity.
+        Returns float between 0.0 and 1.0.
+        """
+        try:
+            # Convert to lowercase for comparison
+            query_lower = query.lower()
+            snippet_lower = snippet.lower()
+            
+            # Extract key terms from query
+            query_terms = set(query_lower.split())
+            snippet_terms = set(snippet_lower.split())
+            
+            # Remove common stop words
+            stop_words = {'the', 'is', 'at', 'which', 'on', 'and', 'a', 'to', 'are', 'as', 'an', 'have', 'in', 'be', 'of', 'for', 'with', 'by', 'from', 'about', 'this', 'that', 'it', 'or', 'but', 'will', 'can', 'should', 'would', 'could', 'may', 'might'}
+            query_terms = query_terms - stop_words
+            snippet_terms = snippet_terms - stop_words
+            
+            if not query_terms:
+                return 0.5  # Default score if no meaningful terms
+            
+            # Calculate keyword overlap
+            common_terms = query_terms.intersection(snippet_terms)
+            keyword_score = len(common_terms) / len(query_terms)
+            
+            # Boost for educational keywords
+            edu_keywords = {'university', 'college', 'institute', 'engineering', 'admission', 'course', 'program', 'fee', 'fees', 'placement', 'campus', 'department', 'faculty', 'student', 'academic', 'degree', 'btech', 'mtech', 'phd', 'research'}
+            edu_boost = 0.0
+            for term in query_terms:
+                if term in edu_keywords:
+                    if term in snippet_terms:
+                        edu_boost += 0.2
+            
+            # Calculate position boost (terms appearing early get higher score)
+            position_boost = 0.0
+            snippet_words = snippet_lower.split()[:50]  # Check first 50 words
+            for i, word in enumerate(snippet_words):
+                if word in query_terms:
+                    position_boost += (50 - i) / 50 * 0.1
+            
+            # Combine scores
+            final_score = min(1.0, keyword_score + edu_boost + position_boost)
+            return final_score
+            
+        except Exception as e:
+            logger.warning(f"Relevance calculation failed: {e}")
+            return 0.5  # Default score on error
+
     async def _generate_search_query(self, query: str) -> str:
         """Generate optimized search query for educational content."""
         # Extract college name and create focused search

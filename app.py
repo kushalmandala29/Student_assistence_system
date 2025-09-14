@@ -107,9 +107,9 @@ class StudentAssistantApp:
             <div class="feature-box">
             • Comprehensive college information<br>
             • Real-time web search<br>
-            • Multi-language support<br>
             • Admission guidance<br>
-            • Course details & career paths
+            • Course details & career paths<br>
+            • Smart relevance ranking
             </div>
             """, unsafe_allow_html=True)
             

@@ -4,10 +4,10 @@ A comprehensive AI-powered system that helps students find information about Ind
 
 ## 🚀 Features
 
-- **Multi-Source Knowledge Retrieval**: Combines ChromaDB, Brave Search API, and Gemini Pro fallback
+- **Multi-Source Knowledge Retrieval**: Combines ChromaDB, WebSearchAPI, Search1API, NewsData.io and Gemini Pro fallback
 - **Comprehensive Information**: College details, courses, admissions, fees, and career guidance
-- **Multi-language Support**: Auto-detects language and responds appropriately
 - **Real-time Web Search**: Fetches latest information when needed
+- **Smart Relevance Ranking**: Returns most relevant results from all APIs simultaneously
 - **Intelligent Fallback**: Graceful degradation when sources are unavailable
 - **Student-Friendly Interface**: Clean Streamlit UI optimized for students
 
@@ -18,8 +18,10 @@ A comprehensive AI-powered system that helps students find information about Ind
 │   Streamlit UI  │    │   RAG Pipeline   │    │  Data Sources   │
 │                 │    │                  │    │                 │
 │ • Chat Interface│────│ 1. Retriever     │────│ • ChromaDB      │
-│ • Multi-language│    │ 2. Generator     │    │ • Brave Search  │
-│ • Error Handling│    │ 3. Prompt Mgmt   │    │ • Gemini Pro    │
+│ • Smart Ranking │    │ 2. Generator     │    │ • WebSearchAPI  │
+│ • Error Handling│    │ 3. Prompt Mgmt   │    │ • Search1API    │
+│                 │    │                  │    │ • NewsData.io   │
+│                 │    │                  │    │ • Gemini Pro    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
@@ -91,14 +93,14 @@ A comprehensive AI-powered system that helps students find information about Ind
    - Add new content to ChromaDB for future use
 
 2. **Fallback Chain**
-   - ChromaDB → Brave Search → Gemini Pro Internal Knowledge
+   - ChromaDB → WebSearchAPI → Search1API → NewsData.io → Gemini Pro Internal Knowledge
    - Each step has error handling and graceful degradation
 
 3. **Response Generation**
    - Use retrieved context with Gemini model
    - Format response with proper structure
-   - Include source attribution
-   - Apply language-specific formatting
+   - Include source attribution with relevance scores
+   - Smart ranking of results from all sources
 
 ## 📁 Project Structure
 
@@ -130,26 +132,21 @@ Student-Assistant-System/
 - "Compare fees between private and government engineering colleges"
 - "Placement statistics for mechanical engineering courses"
 
-### Multi-language Support
-- English: "What courses does Anna University offer?"
-- Hindi: "अन्ना विश्वविद्यालय में कौन से कोर्स हैं?"
-
 ## 🔍 Key Components
 
 ### DocumentRetriever (`rag_pipeline/retriever.py`)
 - ChromaDB integration with similarity search
-- Brave Search API integration
-- Web scraping and content processing
+- WebSearchAPI.ai, Search1API, NewsData.io integration
+- Smart relevance ranking and deduplication
 - Gemini Pro fallback knowledge
 
 ### ResponseGenerator (`rag_pipeline/generator.py`)
-- Language detection and localization
 - Response formatting and cleaning
-- Source attribution
-- Error handling
+- Source attribution with relevance scores
+- Error handling and fallback responses
 
 ### PromptTemplates (`rag_pipeline/prompt_template.py`)
-- Multi-language system prompts
+- System prompts for student assistance
 - Context-aware user prompts
 - Specialized templates for different query types
 
@@ -184,11 +181,11 @@ Student-Assistant-System/
 ## 📈 Future Enhancements
 
 - [ ] Integration with more educational APIs
-- [ ] Advanced language support (regional languages)
 - [ ] Voice input/output capabilities
-- [ ] Personalized recommendations
+- [ ] Personalized recommendations based on user preferences
 - [ ] Integration with college admission portals
 - [ ] Analytics and usage tracking
+- [ ] Advanced filtering and search options
 
 ## 🤝 Contributing
 
