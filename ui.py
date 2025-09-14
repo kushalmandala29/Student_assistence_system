@@ -22,8 +22,7 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_community.chat_models import ChatOllama
-from langchain_community.embeddings import OllamaEmbeddings
+from google_gemini import GeminiEmbeddings, ChatGoogleGemini
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -42,7 +41,7 @@ API_RATE_LIMIT = AsyncLimiter(API_RPS, time_period=1)
 API_TIMEOUT = 60  # Increase timeout to 60 seconds
 
 # Brave Search Key
-API_KEY =  os.getenv("API_KEY")
+API_KEY = os.getenv("BRAVE_SEARCH_API_KEY")
 
 # Brave Search API host and paths
 API_HOST = "https://api.search.brave.com"
@@ -134,21 +133,21 @@ def initialize_vector_db():
         raise RuntimeError(f"Vector database initialization failed: {str(e)}")
 
 # Initialize the embedding model
-embeddings = OllamaEmbeddings(
-    model="nomic-embed-text",
+embeddings = GeminiEmbeddings(
+    api_key=os.getenv("GOOGLE_GEMINI_API_KEY"),
+    model="models/embedding-001",
     show_progress=True
 )
 
-# Initialize the Llama model
-local_llm = 'llama3.2'
-llm = ChatOllama(
-    model=local_llm,
-    keep_alive="3h",
+# Initialize the Gemini model
+llm = ChatGoogleGemini(
+    api_key=os.getenv("GOOGLE_GEMINI_API_KEY"),
+    model="gemini-1.5-flash",
     max_tokens=512,
     temperature=0
 )
 
-template = """<bos><start_of_turn>user\nYou are a Student Assistant System designed to help students with information regarding colleges, universities, ug and pg programmes with branch ,courses including each specializations, and their careers. \
+template = """You are a Student Assistant System designed to help students with information regarding colleges, universities, ug and pg programmes with branch ,courses including each specializations, and their careers. \
 Please provide a meaningful response based on the following context. Ensure your answer is in full sentences with correct spelling and punctuation. \
 Format your response with bullet points and sections where appropriate. \
 Do not include phrases like 'Based on the provided context' or 'I found information about'. Instead, start directly with the relevant information. \
@@ -158,8 +157,6 @@ CONTEXT: {context}
 
 QUESTION: {question}
 
-<end_of_turn>
-<start_of_turn>model\n
 ANSWER:"""
 
 prompt = ChatPromptTemplate.from_template(template)
